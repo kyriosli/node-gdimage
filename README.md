@@ -37,7 +37,11 @@ require('fs').writeFileSync('out.png', buf);
 
 ## API Reference
 
-### function create(`int` width, `int` height, `boolean` trueColor = `true`): `GDImage`
+### function create
+
+```js
+function create(int width, int height, boolean trueColor = true): GDImage
+```
 
 Creates a new `GDImage` instance.
 
@@ -53,7 +57,11 @@ Returns:
 
   a new `GDImage` instance
 
-### function decode(`Buffer` buf, `string` format = `'auto'`): `GDImage`
+### function decode
+ 
+```js
+function decode(Buffer buf, string format = 'auto'): GDImage
+```
 
 Decodes a image file content into a GDImage instance.
  
@@ -81,7 +89,11 @@ which helps us working with it. Methods and fields available are as follows.
 
 the width and height of the image, in pixels.
 
-### GDImage::destroy()
+### GDImage::destroy
+
+```js
+function destroy()
+```
 
 Destroys the image, frees memories and resources. A `GDImage` must be freed manually to prevent memory leak. 
 
@@ -104,39 +116,60 @@ may fail. To prevent the potential failure, you can
   - find a closest color from the platte by calling `getClosestColor(rgba)`
   - use `resolveColor(rgba)`
 
-### GDImage::getColor(r, g, b, a): `Color`
+### GDImage::getColor
+
+```js
+function getColor(int r, int g, int b, int a = 1): Color
+function getColor(string rgb): Color
+function getColor(string rgba): Color
+```
 
 Gets an existing color from the color space. If none matching, throws an exception.
 
-### GDImage::getClosestColor(r, g, b, a): `Color`
+### GDImage::getClosestColor
 
 Gets an existing color closest to the rgba value from the color space.
 
-### GDImage::resolveColor(r, g, b, a): `Color`
+### GDImage::resolveColor
 
 This method will always return a color instance. First it tries to find a matching color, if none matching,
 it tries to allocate a new color. If both failed, it returns a closest color from the color space.
 
-### GDIMage::toTrueColor(): `GDImage`
+### GDIMage::toTrueColor
+
+```js
+function toTrueColor(): GDImage
+```
 
 Converts a platte image to true color. Calling this on a true color image has no effects.
 
 Returns the GDImage itself.
 
-### GDImage::scale(`int` new_width, `int` new_height, `boolean` auto_destroy = `false`): `GDImage`
+### GDImage::scale
+
+```js
+function scale(int new_width, int new_height, boolean auto_destroy = false): GDImage
+```
 
 Scales the image into new size. If auto_destroy is set to true, the current image is destroyed after the it is scaled.
 
 Returns a new `GDImage` created.
 
-### GDImage::line(`int` x1, `int` y1, `int` x2, `int` y2, `Color` color, `boolean` anti_aliased = `false`): `GDImage`
+### GDImage::line
+
+```js
+function line(int x1, int y1, int x2, int y2, Color color, boolean anti_aliased = false): GDImage
+```
 
 Draws a solid line from `(x1, y1)` to `(x2, y2)`. If `anti_aliased` is set to true, anti-aliasing is enabled
 
 Returns the GDImage itself.
 
+### GDImage::text
 
-### GDImage::text(`string` str, `int` x, `int` y, `double` size, `Color` color, `double` angle = `0`, `string` font = `"arial"`): `GDImage`
+```js
+function text(string str, int x, int y, double size, Color color, double angle = 0, string font = "arial"): GDImage
+```
 
 Writes text with true type font, returns a rect which wraps the text.
 
@@ -149,7 +182,11 @@ Parameters:
  - `angle` angle of baseline, in degrees
  - `font` name of font, such as `arial` `times` `courier` etc.
 
-### GDImage::encode(`string` format, `boolean` auto_close  = `false`): Buffer
+### GDImage::encode
+
+```js
+function encode(string format, boolean auto_close  = false): Buffer
+```
 
 Encodes the image into image file content. Supported formats are:
 
