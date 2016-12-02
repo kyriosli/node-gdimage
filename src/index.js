@@ -2,8 +2,10 @@ var ref = require('ref');
 var ptrLen = ref.sizeof.pointer, intLen = ref.sizeof.int;
 var $void = ref.types.void,
     $int = ref.types.int32,
+    $double = ref.types.double,
     $voidPtr = ref.refType($void),
     $intPtr = ref.refType($int),
+    $char8Ptr = ref.refType(ref.types.uint8),
     $gdImagePtr = ref.refType({
         size: ptrLen + intLen + intLen,
         indirection: 1,
@@ -12,10 +14,11 @@ var $void = ref.types.void,
         }, set: function () {
         }
     }),
-    $charPtr = ref.refType(ref.types.uint16),
+    $char16Ptr = ref.refType(ref.types.uint16),
     $gdFontPtr = $voidPtr;
 
 var gdAntiAliased = -7;
+var DEFAULT_TTF_FONT = 'arial';
 
 var types = {
     bmp: 'Bmp', 'image/bmp': 'Bmp', 'application/x-bmp': 'Bmp', 'application/x-ms-bmp': 'Bmp',
@@ -40,14 +43,17 @@ var libgd = require('ffi').Library('libgd', function () {
         $encoder = [$voidPtr, [$gdImagePtr, $intPtr]],
         $decoder = [$gdImagePtr, [$int, $voidPtr]];
     return {
+        gdFontGetGiant: [$gdFontPtr, []],
         gdFontGetLarge: [$gdFontPtr, []],
         gdFree: [$void, [$voidPtr]],
         // gdImageAlphaBlending: [$voidPtr, [$gdImagePtr, $int]],
         gdImageBmpPtr: $encoder,
         gdImageColorAllocateAlpha: [$int, [$gdImagePtr, $int, $int, $int, $int]],
         gdImageColorClosestAlpha: [$int, [$gdImagePtr, $int, $int, $int, $int]],
+        gdImageColorDeallocate: [$void, [$gdImagePtr, $int]],
         gdImageColorExactAlpha: [$int, [$gdImagePtr, $int, $int, $int, $int]],
         gdImageColorResolveAlpha: [$int, [$gdImagePtr, $int, $int, $int, $int]],
+        gdImageCopyRotated: [$void, [$gdImagePtr, $gdImagePtr, $double, $double, $int, $int, $int, $int, $int]],
         gdImageCreate: [$gdImagePtr, [$int, $int]],
         gdImageCreateFromBmpPtr: $decoder,
         gdImageCreateFromGifPtr: $decoder,
@@ -64,7 +70,8 @@ var libgd = require('ffi').Library('libgd', function () {
         gdImagePngPtr: $encoder,
         gdImageScale: [$gdImagePtr, [$gdImagePtr, $int, $int]],
         gdImageSetAntiAliased: [$voidPtr, [$gdImagePtr, $int]],
-        gdImageString16: [$void, [$gdImagePtr, $gdFontPtr, $int, $int, $charPtr, $int]],
+        gdImageString16: [$void, [$gdImagePtr, $gdFontPtr, $int, $int, $char16Ptr, $int]],
+        gdImageStringTTF: [$char8Ptr, [$gdImagePtr, $intPtr, $int, $char8Ptr, $double, $double, $int, $int, $char8Ptr]],
         gdImageTiffPtr: $encoder,
         gdImageWebpPtr: $encoder
     }
@@ -116,6 +123,12 @@ GDImgage.prototype = {
     getClosestColor: colorGetter(libgd.gdImageColorClosestAlpha),
     getColor: colorGetter(libgd.gdImageColorExactAlpha),
     resolveColor: colorGetter(libgd.gdImageColorResolveAlpha),
+    freeColor: function (color) {
+        libgd.gdImageColorDeallocate(this.$ref, color.$ref);
+    },
+    copyRotated: function (dst, dstx, dsty, srcx, srcy, srcWidth, srcHeight, angle) {
+        libgd.gdImageCopyRotated(dst.$ref, this.$ref, dstx, dsty, srcx, srcy, srcWidth, srcHeight, angle | 0)
+    },
     fill: function (x1, y1, x2, y2, color) {
         libgd.gdImageFilledRectangle(this.$ref, x1, y1, x2, y2, color.$ref);
         return this;
@@ -129,13 +142,20 @@ GDImgage.prototype = {
         libgd.gdImageLine(this.$ref, x1, y1, x2, y2, $color);
         return this;
     },
-    text: function (str, x1, y1, color) {
-        var buf = new Buffer(str + '\0', 'ucs2');
-        // buf.writeUInt16LE(0, str.length << 1);
-        buf.type = $charPtr;
-        var font = libgd.gdFontGetLarge();
-        libgd.gdImageString16(this.$ref, font, x1, y1, buf, color.$ref);
-        return this;
+    text: function (str, x1, y1, size, color, angle, font) {
+        font || (font = DEFAULT_TTF_FONT);
+        angle || (angle = 0);
+
+        var buf = new Buffer(str + '\0');
+        buf.type = $char8Ptr;
+        var font = new Buffer(font + '\0');
+        var brect = new Buffer(intLen * 8);
+        brect.type = $intPtr;
+        var err_msg = libgd.gdImageStringTTF(this.$ref, brect, color.$ref, font, size, angle / 180 * Math.PI, x1, y1, buf);
+        if (!ref.isNull(err_msg)) {
+            throw new Error(err_msg.readCString())
+        }
+        return brect;
     },
     encode: function (format) {
         var method = libgd['gdImage' + types[format.toLowerCase()] + 'Ptr'];

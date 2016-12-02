@@ -1,6 +1,9 @@
 var gd = require('..');
+var assert = require('assert');
 
 var image = gd.create(200, 100);
+assert.strictEqual(image.width, 200);
+assert.strictEqual(image.height, 100);
 
 var white = image.allocateColor('#ffffff'),
     red = image.allocateColor('#ff0000'),
@@ -8,7 +11,10 @@ var white = image.allocateColor('#ffffff'),
 
 image.fill(0, 0, 200, 100, white);
 image.line(0, 0, 200, 100, red, true);
-image.text('hello~', 0, 0, green);
+image.text('hello~', 30, 20, 18, green, -30);
+try {
+    assert.fail(true);
+}
 var buf = image.encode('png');
 
 require('fs').writeFileSync('out.png', buf);
