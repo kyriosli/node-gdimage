@@ -40,7 +40,7 @@ require('fs').writeFileSync('out.png', buf);
 ### function create
 
 ```js
-function create(int width, int height, boolean trueColor = true): GDImage
+function create(width:int, height:int, trueColor:boolean = true): GDImage
 ```
 
 Creates a new `GDImage` instance.
@@ -60,7 +60,7 @@ Returns:
 ### function decode
  
 ```js
-function decode(Buffer buf, string format = 'auto'): GDImage
+function decode(buf:Buffer, format:string = 'auto'): GDImage
 ```
 
 Decodes a image file content into a GDImage instance.
@@ -84,8 +84,8 @@ Returns:
 
 ```js
 function trueColor(r, g, b, a): Color
-function trueColor(string rgb): Color
-function trueColor(string rgba): Color
+function trueColor(rgb:string): Color
+function trueColor(rgba:string): Color
 ```
 
 Resolves a 32 bit RGBA true color. `trueColor` accepts several types of arguments:
@@ -143,19 +143,17 @@ may fail because the color platte cannot have more colors. To prevent the potent
 
 ### GDImage::getColor
 
-```js
-function getColor(int r, int g, int b, int a = 1): Color
-function getColor(string rgb): Color
-function getColor(string rgba): Color
-```
-
 Gets an existing color from the color space. If none matching, an exception is thrown.
+
+ `image.getColor` accepts same arguments as `gd.trueColor`.
 
 Not that `image.GetColor` acts like `gd.trueColor` in true color mode, it will never fail. 
 
 ### GDImage::getClosestColor
 
 Gets an existing color closest to the rgba value from the color space.
+
+ `image.getClosestColor` accepts same arguments as `gd.trueColor`.
 
 Not that `image.GetColor` acts like `gd.trueColor` in true color mode, it will never fail.
 
@@ -169,7 +167,7 @@ Not that `image.GetColor` acts like `gd.trueColor` in true color mode, it will n
 ### GDImage::scale
 
 ```js
-function scale(int new_width, int new_height, boolean auto_destroy = false): GDImage
+function scale(new_width:int, new_height:int, auto_destroy:boolean = false): GDImage
 ```
 
 Scales the image into new size. If auto_destroy is set to true, the current image is destroyed after the it is scaled.
@@ -179,7 +177,7 @@ Returns a new `GDImage` created.
 
 ### GDImage::rotate
 ```js
-function rotate(float angle, Color bg_color = null, boolean auto_close = false): GDImage
+function rotate(angle:float, bg_color:Color = null, auto_close:boolean = false): GDImage
 ```
 
 Rotates the image clockwise. `angle` shold be between `0~360`. When `angle` is not `90` `180` `270`, the `bg_color` is used
@@ -190,7 +188,7 @@ Returns a new `GDImage` created.
 ### GDImage::line
 
 ```js
-function line(int x1, int y1, int x2, int y2, Color color, boolean anti_aliased = false): GDImage
+function line(x1:int, y1:int, x2:int, y2:int, color:Color, anti_aliased:boolean = false): GDImage
 ```
 
 Draws a solid line from `(x1, y1)` to `(x2, y2)`. If `anti_aliased` is set to true, anti-aliasing is enabled
@@ -200,10 +198,10 @@ Returns the GDImage itself.
 ### GDImage::text
 
 ```js
-function text(string str, int x, int y, double size, Color color, double angle = 0, string font = "arial"): GDImage
+function text(str:string, x:int, y:int, size:double, color:Color, angle:float = 0, font:string = "arial"): Array.<number>
 ```
 
-Writes text with true type font, returns a rect which wraps the text.
+Writes text with true type font, returns a rect which wraps the text. Only true type fonts are supported.
 
 Parameters:
 
@@ -247,7 +245,7 @@ process.env.GDFONTPATH = require('path').resolve(__dirname, 'fonts') + ':/Librar
 ### GDImage::encode
 
 ```js
-function encode(string format, boolean auto_close  = false): Buffer
+function encode(format:string, auto_close:boolean = false): Buffer
 ```
 
 Encodes the image into image file content. Supported formats are:
