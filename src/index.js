@@ -2,6 +2,7 @@ var ref = require('ref');
 var ptrLen = ref.sizeof.pointer, intLen = ref.sizeof.int;
 var $void = ref.types.void,
     $int = ref.types.int32,
+    $float = ref.types.float,
     $double = ref.types.double,
     $voidPtr = ref.refType($void),
     $intPtr = ref.refType($int),
@@ -17,7 +18,7 @@ var $void = ref.types.void,
     $char16Ptr = ref.refType(ref.types.uint16),
     $gdFontPtr = $voidPtr;
 
-var gdAntiAliased = -7;
+var GD_ANTI_ALIASED = -7;
 var DEFAULT_TTF_FONT = 'arial';
 
 var types = {
@@ -43,8 +44,6 @@ var libgd = require('ffi').Library('libgd', function () {
         $encoder = [$voidPtr, [$gdImagePtr, $intPtr]],
         $decoder = [$gdImagePtr, [$int, $voidPtr]];
     return {
-        gdFontGetGiant: [$gdFontPtr, []],
-        gdFontGetLarge: [$gdFontPtr, []],
         gdFree: [$void, [$voidPtr]],
         // gdImageAlphaBlending: [$voidPtr, [$gdImagePtr, $int]],
         gdImageBmpPtr: $encoder,
@@ -62,16 +61,21 @@ var libgd = require('ffi').Library('libgd', function () {
         gdImageCreateFromTiffPtr: $decoder,
         gdImageCreateTrueColor: [$gdImagePtr, [$int, $int]],
         gdImageDestroy: [$void, [$gdImagePtr]],
+        gdImageEllipse: $fiveInt,
+        gdImageFilledEllipse: $fiveInt,
         gdImageFilledRectangle: $fiveInt,
         gdImageGifPtr: $encoder,
         gdImageJpegPtr: $encoder,
         gdImageLine: $fiveInt,
         gdImagePaletteToTrueColor: [$int, [$gdImagePtr]],
         gdImagePngPtr: $encoder,
+        gdImageRectangle: $fiveInt,
+        gdImageRotateInterpolated: [$gdImagePtr, [$gdImagePtr, $float, $int]],
         gdImageScale: [$gdImagePtr, [$gdImagePtr, $int, $int]],
         gdImageSetAntiAliased: [$voidPtr, [$gdImagePtr, $int]],
+        gdImageSetInterpolationMethod: [$int, [$gdImagePtr, $int]],
         gdImageString16: [$void, [$gdImagePtr, $gdFontPtr, $int, $int, $char16Ptr, $int]],
-        gdImageStringTTF: [$char8Ptr, [$gdImagePtr, $intPtr, $int, $char8Ptr, $double, $double, $int, $int, $char8Ptr]],
+        gdImageStringFT: [$char8Ptr, [$gdImagePtr, $intPtr, $int, $char8Ptr, $double, $double, $int, $int, $char8Ptr]],
         gdImageTiffPtr: $encoder,
         gdImageWebpPtr: $encoder
     }
@@ -88,6 +92,31 @@ var intPtr = ref.alloc($int);
 var malloc = Buffer.allocUnsafe || Buffer;
 
 var rRGBA = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})([\da-f]{2})?$/i;
+
+var interpolation_methods = {
+    bell: 1,
+    bessel: 2,
+    bilinear_fixed: 3,
+    bicubic: 4,
+    bicubic_fixed: 5,
+    blackman: 6,
+    box: 7,
+    bspline: 8,
+    catmullrom: 9,
+    gaussian: 10,
+    generalized_cubic: 11,
+    hermite: 12,
+    hamming: 13,
+    hanning: 14,
+    mitchell: 15,
+    nearest_neighbour: 16,
+    power: 17,
+    quadratic: 18,
+    sinc: 19,
+    triangle: 20,
+    weighted4: 21,
+    linear: 22
+};
 
 function colorGetter(api) {
     return function (r, g, b, a) {
@@ -129,15 +158,24 @@ GDImgage.prototype = {
     copyRotated: function (dst, dstx, dsty, srcx, srcy, srcWidth, srcHeight, angle) {
         libgd.gdImageCopyRotated(dst.$ref, this.$ref, dstx, dsty, srcx, srcy, srcWidth, srcHeight, angle | 0)
     },
-    fill: function (x1, y1, x2, y2, color) {
-        libgd.gdImageFilledRectangle(this.$ref, x1, y1, x2, y2, color.$ref);
+    rect: function (x, y, w, h, color, filled) {
+        var fn = filled ? libgd.gdImageFilledRectangle : libgd.gdImageRectangle;
+        fn(this.$ref, x, y, w + x, h + y, color.$ref);
         return this;
+    },
+    ellipse: function (cx, cy, rx, ry, color, filled) {
+        var fn = filled ? libgd.gdImageFilledEllipse : libgd.gdImageFilledEllipse;
+        fn(this.$ref, cx, cy, rx >> 1, ry >> 1, color.$ref);
+        return this;
+    },
+    circle: function (cx, cy, radius, color, filled) {
+        return this.ellipse(cx, cy, radius, radius, color, filled);
     },
     line: function (x1, y1, x2, y2, color, antiAliased) {
         var $color = color.$ref;
         if (antiAliased) {
             libgd.gdImageSetAntiAliased(this.$ref, $color);
-            $color = gdAntiAliased;
+            $color = GD_ANTI_ALIASED;
         }
         libgd.gdImageLine(this.$ref, x1, y1, x2, y2, $color);
         return this;
@@ -151,13 +189,17 @@ GDImgage.prototype = {
         var font = new Buffer(font + '\0');
         var brect = new Buffer(intLen * 8);
         brect.type = $intPtr;
-        var err_msg = libgd.gdImageStringTTF(this.$ref, brect, color.$ref, font, size, angle / 180 * Math.PI, x1, y1, buf);
+        var err_msg = libgd.gdImageStringFT(this.$ref, brect, color.$ref, font, size, angle / 180 * Math.PI, x1, y1, buf);
         if (!ref.isNull(err_msg)) {
             throw new Error(err_msg.readCString())
         }
-        return brect;
+        var fn = 'readInt' + intLen * 8 + ref.endianness;
+        var x = brect[fn](0), y = brect[fn](intLen * 5),
+            w = brect[fn](intLen * 2) - x, h = brect[fn](intLen) - y;
+
+        return [x, y, w, h];
     },
-    encode: function (format) {
+    encode: function (format, auto_destroy) {
         var method = libgd['gdImage' + types[format.toLowerCase()] + 'Ptr'];
         if (!method) {
             throw new Error(format + ' is not supported');
@@ -166,6 +208,18 @@ GDImgage.prototype = {
         var len = intPtr.deref(), ret = malloc(len);
         ref.reinterpret(ptr, len, 0).copy(ret);
         libgd.gdFree(ptr);
+        auto_destroy && this.destroy();
+        return ret;
+    },
+    setInterpolationMethod: function (method) {
+        var n = typeof method === "number" ? method | 0 : method in interpolation_methods ? interpolation_methods[method] : 0;
+        libgd.gdImageSetInterpolationMethod(n);
+    },
+    rotate: function (angle, bgColor, auto_destroy) {
+        var ret = libgd.gdImageRotateInterpolated(this.$ref, angle, bgColor ? bgColor.$ref : 0).deref();
+        if (auto_destroy) {
+            this.destroy();
+        }
         return ret;
     },
     scale: function (width, height, auto_destroy) {
@@ -213,3 +267,7 @@ exports.decode = function (buf, format) {
     buf.type = $voidPtr;
     return method(buf.length, buf).deref()
 };
+
+exports.trueColor = colorGetter(function (api, r, g, b, a) {
+    return ((a << 24) | (r << 16) | (g << 8) | b) >>> 0
+});

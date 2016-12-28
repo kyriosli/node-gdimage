@@ -13,20 +13,26 @@ exports.setSize = function (_width, _height) {
 exports.generate = function (length) {
     var img = gdimage.create(length * width, height, true), chars = '';
     var white = img.allocateColor(255, 255, 255);
-    img.fill(0, 0, img.width, height, white);
+    img.rect(0, 0, img.width, height, white, true);
     for (var i = 0; i < length; i++) {
-        // random color
-        var rgb = hsl2rgb(rnd(), 0.6 + rnd() * 0.4, 0.2 + rnd() * 0.4);
-        var char_color = img.resolveColor(rgb.r * 255, rgb.g * 255, rgb.b * 255);
         var char = charList[rnd() * charLen | 0];
-        // console.log(rgb, char);
         chars += char;
-        img.text(char, i * width + 2, height - 4, width, char_color, 15 - rnd() * 30, fonts[rnd() * fontsLen | 0]);
+        img.text(char, i * width + 2, height - 4, width, randomColor(1), 15 - rnd() * 30, fonts[rnd() * fontsLen | 0]);
     }
-    var ret = {buffer: img.encode('gif'), chars: chars};
-    img.destroy();
-    return ret;
+    // random dots
+    for (var i = 0; i < length << 3; i++) {
+        img.circle(rnd() * length * width, rnd() * height, rnd() * 8, randomColor(rnd() * 0.6), 1);
+
+        img.rect(rnd() * length * width, rnd() * height, 2, 2, randomColor(rnd() * 0.3), 1)
+    }
+    return {buffer: img.encode('gif', true), chars: chars};
+
+    function randomColor(alpha) {
+        var rgb = hsl2rgb(rnd(), 0.6 + rnd() * 0.4, 0.2 + rnd() * 0.4);
+        return img.resolveColor(rgb.r * 255, rgb.g * 255, rgb.b * 255, alpha);
+    }
 };
+
 
 /**
  *

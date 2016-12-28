@@ -80,6 +80,23 @@ Returns:
 
   a `GDImage` instance, which maybe TrueColor or not, depending on the file format.
 
+### function trueColor
+
+```js
+function trueColor(r, g, b, a): Color
+function trueColor(string rgb): Color
+function trueColor(string rgba): Color
+```
+
+Resolves a 32 bit RGBA true color. `trueColor` accepts several types of arguments:
+
+  - `gd.trueColor('#RRGGBB')`, where 'RRGGBB' is hex color codes. For Example `#FF0000` denotes `red`
+  - `gd.trueColor('#RRGGBBAA')`
+  - `gd.trueColor(r, g, b)`, where `r`, `g`, `b` are digits between `0` ~ `255`
+  - `gd.trueColor(r, g, b, a)`, where `a` is a number between `0` and `1`
+
+So `gd.trueColor('#ff00ff')` is equivalent to `gd.trueColor('#ff00ffff')`, as well as `gd.trueColor(255, 0, 255, 1)`
+
 ### class GDImage
 
 A `GDImage` object wraps a native libgd image instance, and wraps several native methods into javascript functions 
@@ -88,52 +105,6 @@ which helps us working with it. Methods and fields available are as follows.
 ### `int` GDImage::width, `int` GDImage::height
 
 the width and height of the image, in pixels.
-
-### GDImage::destroy
-
-```js
-function destroy()
-```
-
-Destroys the image, frees memories and resources. A `GDImage` must be freed manually to prevent memory leak. 
-
-### GDImage::allocateColor(`int` r, `int` g, `int` b, `int` a): `Color`
-
-Allocates a color in the color space. `allocateColor` accepts several types of arguments:
-
-  - `'#RRGGBB'` where `RRGGBB` is hex color codes.
-  - `'#RRGGBBAA'`
-  - (r, g, b) where `r` `g` `b` are digits between `0` ~ `255`
-  - (r, g, b, a) where `a` is number between `0` and `1`
-
-For example `#ff00ff` is equivalent to `#ff00ffff`, as well as `(255, 0, 255, 1)`
-
-If the image is decoded from a `PNG8` or `GIF` file, whose platte has 256 colors, the color allocation
-may fail. To prevent the potential failure, you can
-
-  - convert the image to true color mode by calling `toTrueColor()`, which supports millons of colors.
-  - find an existing color from the platte by calling `getColor(rgba)`
-  - find a closest color from the platte by calling `getClosestColor(rgba)`
-  - use `resolveColor(rgba)`
-
-### GDImage::getColor
-
-```js
-function getColor(int r, int g, int b, int a = 1): Color
-function getColor(string rgb): Color
-function getColor(string rgba): Color
-```
-
-Gets an existing color from the color space. If none matching, throws an exception.
-
-### GDImage::getClosestColor
-
-Gets an existing color closest to the rgba value from the color space.
-
-### GDImage::resolveColor
-
-This method will always return a color instance. First it tries to find a matching color, if none matching,
-it tries to allocate a new color. If both failed, it returns a closest color from the color space.
 
 ### GDIMage::toTrueColor
 
@@ -145,6 +116,56 @@ Converts a platte image to true color. Calling this on a true color image has no
 
 Returns the GDImage itself.
 
+### GDImage::destroy
+
+```js
+function destroy()
+```
+
+Destroys the image, frees memories and resources. A `GDImage` must be freed manually to prevent memory leak. 
+
+### GDImage::allocateColor
+
+```js
+function allocateColor(r, g, b, a): Color
+```
+
+Allocates a color in the color space. `image.allocateColor` accepts same arguments as `gd.trueColor`.
+
+If the image is in true color mode, `image.allocateColor` acts like `gd.trueColor`.
+
+If the image is in platte mode, for example it is decoded from a `PNG8` or `GIF` file, the color allocation
+may fail because the color platte cannot have more colors. To prevent the potential failure, you can
+
+  - convert the image to true color mode by calling `image.toTrueColor()`.
+  - find a closest color from the platte by calling `image.getClosestColor(rgba)`
+  - use `image.resolveColor(rgba)`
+
+### GDImage::getColor
+
+```js
+function getColor(int r, int g, int b, int a = 1): Color
+function getColor(string rgb): Color
+function getColor(string rgba): Color
+```
+
+Gets an existing color from the color space. If none matching, an exception is thrown.
+
+Not that `image.GetColor` acts like `gd.trueColor` in true color mode, it will never fail. 
+
+### GDImage::getClosestColor
+
+Gets an existing color closest to the rgba value from the color space.
+
+Not that `image.GetColor` acts like `gd.trueColor` in true color mode, it will never fail.
+
+### GDImage::resolveColor
+
+This method will always return a color instance. First it tries to find a matching color, if none matching,
+it tries to allocate a new color. If both failed, it returns a closest color from the color space.
+
+Not that `image.GetColor` acts like `gd.trueColor` in true color mode, it will never fail.
+
 ### GDImage::scale
 
 ```js
@@ -152,6 +173,17 @@ function scale(int new_width, int new_height, boolean auto_destroy = false): GDI
 ```
 
 Scales the image into new size. If auto_destroy is set to true, the current image is destroyed after the it is scaled.
+
+Returns a new `GDImage` created.
+
+
+### GDImage::rotate
+```js
+function rotate(float angle, Color bg_color = null, boolean auto_close = false): GDImage
+```
+
+Rotates the image clockwise. `angle` shold be between `0~360`. When `angle` is not `90` `180` `270`, the `bg_color` is used
+ to fill the empty.
 
 Returns a new `GDImage` created.
 
@@ -180,7 +212,37 @@ Parameters:
  - `size` text size in dots/pixels
  - `color` foreground color
  - `angle` angle of baseline, in degrees
- - `font` name of font, such as `arial` `times` `courier` etc.
+ - `font` name/path of font, such as `arial` `times` `courier`, or `Symbol.ttf`, or `/System/Library/Fonts/Symbol.ttf` etc. You can supply multi names with `;`
+
+Returns an array of 4 digits denoting an rectangle of the bounds: `[x, y, w, h]`
+
+#### Find out system font names:
+
+In Windows, check `C:\WINDOWS\FONTS` `C:\WINNT\FONTS` for files named `*.ttf`.
+In Unix/Linux, check `/usr/share/fonts/TrueType` `/usr/lib/X11/fonts` etc.
+In Mac/OSX, check `/Library/Fonts` `/System/Library/Fonts`.
+
+Note that modern os uses `ttc` file format which is not supported by libgd.
+If you want to use some fonts that the os does not supply, you should download and install the font files
+in `ttf` format or put them in your project directory and specify the font path as below.
+
+#### Use Your custom font paths:
+
+To use custom font paths, you can supply an environment variable with the paths, separated with `:` or`;`
+
+```sh
+# in posix shell:
+GDFONTPATH="/Users/kyrios.li/fonts:/Library/Fonts" node start
+
+# in windows cmd:
+set GDFONTPATH="C:\\Users\\kyrios.li\\fonts;C:\\Windows\\Fonts"
+```
+
+Or just set the font path in node.js:
+
+```js
+process.env.GDFONTPATH = require('path').resolve(__dirname, 'fonts') + ':/Library/Fonts';
+```
 
 ### GDImage::encode
 
